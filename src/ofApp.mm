@@ -25,7 +25,7 @@ void ofApp::setup(){
     cout<<"listening for osc messages on port "<<OSC_PORT<<"\n";
     _osc_receiver.setup(OSC_PORT);
     
-    int fontSize = 8;
+    int fontSize = 16;
     if (ofxiOSGetOFWindow()->isRetinaSupportedOnDevice())
         fontSize *= 2;
     _font.load("fonts/mono0755.ttf", fontSize);
@@ -45,6 +45,7 @@ void ofApp::setup(){
         _ww=ofGetWidth();
         _wh=ofGetHeight();
     }
+    _projecth=_wh/1024.0*300.0;
     
     
     _fbo_tmp1.allocate(_ww,_wh,GL_RGB);
@@ -83,20 +84,20 @@ void ofApp::setup(){
     
     _last_millis=ofGetElapsedTimeMillis();
     _dmillis=0;
+    _play_millis=0;
     
     _shader_threshold=0;
     _sobel_threshold=.5;
     
     //_screen_flow=DFlow(_shader_threshold);
     
-    _timer_filterIn=FrameTimer(800);
+    _timer_filterIn=FrameTimer(5000);
     _timer_filterOut=FrameTimer(500);
     _timer_bpm=FrameTimer((float)60000/(float)BPM);
     _timer_bpm.restart();
     
     
-    reset();
-    
+    setStage(0);
 
 }
 
@@ -110,6 +111,7 @@ void ofApp::update(){
     
     _dmillis=ofGetElapsedTimeMillis()-_last_millis;
     _last_millis+=_dmillis;
+    _play_millis+=_dmillis;
     
     _timer_bpm.update(_dmillis);
     
@@ -133,30 +135,38 @@ void ofApp::update(){
             _shader_threshold=_timer_filterIn.val();
             if(_shader_threshold>=1.0){
                 if(_timer_bpm.val()==1) updateFeaturePoint();
+            }else{
+                _shader_threshold+=ofRandom(-.05,.05);
             }
-            return;
+            break;
         case 2:
             _shader_threshold=1.0;
             _sobel_threshold=.5;
             if(_timer_bpm.val()==1){
                 if(_detect_feature.size()>0){
-                    addARPiece(_detect_feature.front());
+                    if(ofRandom(5)>1) addARPiece(_detect_feature.front());
+                    else addARParticle(_detect_feature.front());
+                    
                     _detect_feature.pop_front();
                 }
-                updateFeaturePoint();
+                if(ofRandom(5)<1) updateFeaturePoint();
             }
             break;
         case 3:
-            _sobel_threshold=.5;
             _shader_threshold=1.0;
+            _sobel_threshold=1.0-.5*abs(sin(_timer_bpm.val()*TWO_PI+ofRandom(-5,5)));
+//            _sobel_threshold*=ofClamp(ofMap(_amp_vibe,.2,.8,1,0),.3,1);
+            
             if(_touched){
                 addTouchTrajectory();
             }
             break;
         case 4:
-            _shader_threshold=1+abs(.5*sin(ofGetFrameNum()/30.0*TWO_PI+ofRandom(-2,2)));
-            _sobel_threshold=.5;
+            _shader_threshold=1.0;//+abs(.5*sin(ofGetFrameNum()/30.0*TWO_PI+ofRandom(-2,2)));
+            _sobel_threshold=1.0-.8*abs(cos(_timer_bpm.val()*PI+ofRandom(-5,5)));
+//            _sobel_threshold*=ofClamp(ofMap(_amp_vibe,.2,.8,1,0),.1,1);
             
+           
             if(ofRandom(5)<1) addFlyObject();
             
             updateFlyCenter();
@@ -165,10 +175,12 @@ void ofApp::update(){
             }
             break;
         case 5:
-             _shader_threshold=1-_timer_filterOut.val();
+            _shader_threshold=1-_timer_filterOut.val()+ofRandom(-.05,.05);
+            _sobel_threshold=ofMap( _timer_filterOut.val(),0,1,.2,2.0);
             _timer_filterOut.update(_dmillis);
             for(auto& p:_fly_object){
-                p->updateToDest();
+                p->updateFlock(_fly_object);
+            //    p->updateToDest();
             }
             break;
     }
@@ -270,7 +282,7 @@ ofVec3f ofApp::arScreenToWorld(ofVec3f screen_pos){
 }
 void ofApp::updateFlyCenter(){
     
-    float flyz_=-1+_timer_bpm.val()*2;
+    float flyz_=-5+sin(_timer_bpm.val()*TWO_PI)*2;
     ofVec3f center_=arScreenToWorld(ofVec3f(_ww/2,_wh/2,flyz_));
     ofVec3f camera_pos=processor->getCameraPosition();
     
@@ -284,6 +296,10 @@ void ofApp::updateFlyCenter(){
     
     DFlyObject::cent+=vel_;
     
+    if(_stage==4 && _timer_bpm.val()==1){
+        DFlyObject::maxForce*=1.05;
+        DFlyObject::maxSpeed*=1.05;
+    }
 }
 void ofApp::setupFlyToDest(){
     
@@ -335,6 +351,22 @@ void ofApp::draw(){
     processor->setARCameraMatrices();
     
     
+    ofPushStyle();
+//    float a_=ofClamp(ofMap(_amp_vibe,.7,1,0,1),.1,1);
+    float t_=ofGetFrameNum()/(float)BPM;
+    //ofLog()<<a_;
+    
+    ofVec3f p2;
+    for(auto it=_detect_feature.begin();it!=_detect_feature.end();++it){
+        auto p=*it;
+        ofSetColor(255,255,0,(150+100*sin((PI*_timer_bpm.val()+p.x*50)*TWO_PI)));
+//        ofSetColor(255, 255, 0);
+        ofDrawSphere(p.x,p.y,p.z,0.0015);
+        
+        p2=p;
+    }
+    ofPopStyle();
+    
 
     _camera_view.bind();
     _shader_mapscreen.begin();
@@ -363,24 +395,7 @@ void ofApp::draw(){
 
 
     
-        ofPushStyle();
-        float a_=ofClamp(ofMap(_amp_vibe,.7,1,0,1),.1,1);
-        float t_=ofGetFrameNum()/(80-40.0*a_);
-        //ofLog()<<a_;
-
-        ofVec3f p2;
-        for(auto it=_detect_feature.begin();it!=_detect_feature.end();++it){
-            auto p=*it;
-            //ofSetColor(255,255,0,a_*(150+100*sin((t_+p.x*50)*TWO_PI)));
-            ofSetColor(255, 255, 0);
-            ofDrawSphere(p.x,p.y,p.z,0.001);
-
-//            if(a_>.8 && ofRandom(20)<1){
-//                if(p.distance(p2)<=DObject::rad/2) ofDrawLine(p2.x,p2.y,p2.z,p.x,p.y,p.z);
-//            }
-            p2=p;
-        }
-        ofPopStyle();
+    
     
    
     
@@ -390,28 +405,35 @@ void ofApp::draw(){
     
     ofDisableDepthTest();
     
+    ofPushStyle();
+    if(_stage==3) ofSetColor(0,255,0);
+    else ofSetColor(255,0,0);
+    
     ofPushMatrix();
     ofTranslate(_ww/2,_wh/2);
     ofRotateZ(90);
     ofTranslate(-_wh/2,-_ww/2);
     ofDrawAxis(20);
     
-    float p=20;
+    float p=_font.getSize()*1.5;
     float x=p;
     float y=p;
-    _font.drawString(ofToString( ofGetFrameRate() ),x,y+=p);
-    _font.drawString("stage= " + ofToString(_stage),x, y+=p);
+    _font.drawString("stage= " + ofToString(_stage),_wh/2, y);
     //_font.drawString("mfeature= " + ofToString(_feature_mesh.getNumVertices()),x, y+=p);
-    _font.drawString("mfeature= " + ofToString(_detect_feature.size()),x, y+=p);
-    _font.drawString("amp= " + ofToString(_amp_vibe),x, y+=p);
+    //_font.drawString("#f= " + ofToString(_detect_feature.size()),x, y+p);
+    _font.drawString(ofToString(_amp_vibe),x, y);
     
-    if(processor->camera->getTrackingState()!=2) _font.drawString("!bad tracking state!",x, y+=p);
+    _font.drawString(ofToString(floor(_play_millis/60000))+":"+ofToString(floor((_play_millis/1000)%60)),x,y+p);
     
-    ofPushStyle();
-    ofSetColor(255,0,0);
-    float b_=_timer_bpm.val();
-    //if(b_<0.8) b_=.2;
-    ofDrawCircle(x+p/2, y+=p,b_*p);
+    _font.drawString(ofToString( ofGetFrameRate() ),x+p*3,_ww-p);
+    if(processor->camera->getTrackingState()!=2) _font.drawString("!bad tracking!",_wh/2, _ww-p);
+    
+        float b_=_timer_bpm.val();
+        ofDrawCircle(x,_ww-p,b_*p);
+    
+        ofDrawLine(0,_ww/2-_projecth/2,_wh,_ww/2-_projecth/2);
+        ofDrawLine(0,_ww/2+_projecth/2,_wh,_ww/2+_projecth/2);
+    
     ofPopStyle();
     
     ofPopMatrix();
@@ -559,8 +581,7 @@ void ofApp::reset(){
 //    _static_object.clear();
 //    _record_object.clear();
     
-    setStage(0);
-
+   
     
     _amp_vibe=0;
     
@@ -569,10 +590,7 @@ void ofApp::reset(){
 // ======================== BUTTON ======================== //
 void ofApp::resetButton(){
   
-    _feature_object.clear();
-    if(_stage!=1) setStage(1);
-    ofVec3f pos=arScreenToWorld(ofVec3f(ofGetWidth()/2,ofGetHeight()/2,-1));
-    addARPiece(pos);
+    
     
 }
 
@@ -597,14 +615,20 @@ void ofApp::setStage(int set_){
     DZigLine* rec_;
     switch(_stage){
         case 0:
+            reset();
+            _record_object.reset();
             _detect_feature.clear();
             _feature_object.clear();
             _fly_object.clear();
             _shader_threshold=0;
+            
+            _last_millis=ofGetElapsedTimeMillis();
+            _dmillis=0;
+            _play_millis=0;
+            
             break;
         case 1:
-            
-            
+            _record_object.reset();
             _fly_object.clear();
             _detect_feature.clear();
             _feature_object.clear();
@@ -612,9 +636,10 @@ void ofApp::setStage(int set_){
             _timer_filterIn.restart();
             break;
         case 2:
+            _record_object.reset();
             _fly_object.clear();
             
-            _timer_bpm.restart();
+            //_timer_bpm.restart();
             break;
         case 3:
             _fly_object.clear();
@@ -624,8 +649,8 @@ void ofApp::setStage(int set_){
             break;
         case 4:
             _detect_feature.clear();
-            DFlyObject::maxForce=.2*s;
-            DFlyObject::maxSpeed=5*s;
+            DFlyObject::maxForce=.07*s;
+            DFlyObject::maxSpeed=3*s;
             break;
         case 5:
             setupFlyToDest();
@@ -633,8 +658,8 @@ void ofApp::setStage(int set_){
             _detect_feature.clear();
             _feature_object.clear();
             
-            DFlyObject::maxForce=.07*s;
-            DFlyObject::maxSpeed=3*s;
+            DFlyObject::maxForce=.5*s;
+            DFlyObject::maxSpeed=12*s;
             _timer_filterOut.restart();
             break;
     }
@@ -672,8 +697,13 @@ void ofApp::checkMessage(){
         }else if(address_=="/prev"){
             prevStage();
         }else if(address_=="/setbpm"){
-            if(m.getNumArgs()>0) _timer_bpm=FrameTimer(m.getArgAsInt32(0));
+            if(m.getNumArgs()>0){
+              _timer_bpm=FrameTimer(m.getArgAsInt32(0));
+                ofLog()<<"set BMP= "<<m.getArgAsInt32(0);
+            }
             _timer_bpm.restart();
+        }else if(address_=="/reset"){
+            reset();
         }
         
     }

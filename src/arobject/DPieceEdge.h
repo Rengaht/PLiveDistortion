@@ -66,7 +66,8 @@ public:
 
             _mesh.addTexCoord(ofVec2f(_texture_pos.x+_texture_rad*ang_/360/_turn,_texture_pos.y));
             _mesh.addTexCoord(ofVec2f(_texture_pos.x+_texture_rad*ang_/360/_turn,_texture_pos.y));
-            
+//            _mesh.addColor(genColor());
+//            _mesh.addColor(genColor());
             
 //            _mesh.addColor(ofColor(ofRandom(255),ofRandom(255),ofRandom(255)));
             
@@ -83,6 +84,8 @@ public:
         
         ofPushStyle();
         ofDisableArbTex();
+//        ofSetColor(_tint);
+        
         
         ofPushMatrix();
         ofTranslate(_loc.x,_loc.y+_start_pos,_loc.z);

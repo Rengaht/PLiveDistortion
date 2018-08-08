@@ -70,7 +70,7 @@ void main(){
 //    if(cnoise(vec2(texCoord.x*20.0,texCoord.y*10.0+frame_count*5.0))<.01){
             gl_FragColor=vec4(0.0);
     }else
-        gl_FragColor = texture2D(inputImageTexture, texCoord);
+        gl_FragColor = mix(vec4(1.0),texture2D(inputImageTexture, texCoord),.8);
 //        gl_FragColor = vec4(0.0,0.0,1.0,1.0);
 //        gl_FragColor = vec4(1.0,1.0,1.0,1.0);
     

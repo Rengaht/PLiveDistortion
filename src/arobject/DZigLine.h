@@ -52,9 +52,9 @@ public:
         _last_dir.rotate(ofRandom(360),ofVec3f(0,1,0));
         
         _wid=rad;
-//        _shader_fill=true;
+        _shader_fill=true;
         
-        //if(vertex_.size()>1) generateMesh(vertex_);
+//        if(vertex_.size()>1) generateMesh(vertex_);
         
         _dest_length=floor(ofRandom(30,150));
         _amp=1.0;
@@ -110,19 +110,20 @@ public:
         ofVec3f toTheLeft=next_.getRotated(90, ofVec3f(0, 1, 1));
         ofVec3f toTheRight=next_.getRotated(-90, ofVec3f(0, 1, 1));
         
-        float twid_=_wid*(.5+2*_amp);//*(1-m/_dest_length);
+        float twid_=_wid*(.2+2*_amp);//*(1-m/_dest_length);
         _mesh.addVertex(_last_vertex+toTheLeft*twid_);
         _mesh.addVertex(_last_vertex+toTheRight*twid_);
         
 //                ofColor color_(ofRandom(100,255),ofRandom(50,255),ofRandom(50,150));
-//                _mesh.addColor(color_);
-//                _mesh.addColor(color_);
+//        auto c_=genColor();
+//        _mesh.addColor(c_);
+//        _mesh.addColor(c_);
         
         _mesh.addTexCoord(ofVec2f(1,_texture_pos));
         _mesh.addTexCoord(ofVec2f(1,_texture_pos));
         for(float i=0;i<m;i+=2){
             _mesh.setTexCoord(i,ofVec2f(i/2/m,_texture_pos));
-            _mesh.setTexCoord(i+1,ofVec2f(i/2/m,_texture_pos+_wid));
+            _mesh.setTexCoord(i+1,ofVec2f(i/2/m,_texture_pos));
         }
         
         
@@ -163,23 +164,25 @@ public:
         
         
         int count=min(m,4);
-        int add_=floor(ofRandom(.2,.5)*m)/count;
+        int add_=min((float)m/count,ofRandom(3,10));
+        
         int i=0;
         
         while(i<add_){
 //            vector<ofVec3f> line_;
 //            line_.push_back(_mesh.getVertex(i+1));
-            ofVec3f loc=_mesh.getVertex(i);
+            ofVec3f loc=_mesh.getVertex(m-1-i);
             
             ofMesh mesh_;
             mesh_.setMode(OF_PRIMITIVE_TRIANGLE_STRIP);
             
             
             for(int j=0;j<count;++j){
-                mesh_.addVertex(_mesh.getVertex(i+j)-loc);
-                mesh_.addTexCoord(_mesh.getTexCoord(i+j)-loc);
+                int k=m-1-(i+j);
+                mesh_.addVertex(_mesh.getVertex(k)-loc);
+                mesh_.addTexCoord(_mesh.getTexCoord(k)-loc);
                 
-                _mesh.removeVertex(j);
+                _mesh.removeVertex(k);
             }
             
             i+=count;

@@ -66,12 +66,12 @@ float cnoise(vec2 P){
 
 void main(){
     textureCoordinate = texCoord;
-    
+    vec4 dest_color;
     vec2 dir=vec2(1.0/window_width,1.0/window_height);
-    if(cnoise(texCoord*2.0)>show_threshold){
-        gl_FragColor=texture2D(Sampler,textureCoordinate);
-        return;
-    }
+//    if(texCoord.x+cnoise(texCoord)*.3>show_threshold){
+//        gl_FragColor=texture2D(Sampler,textureCoordinate);
+//        return;
+//    }
     
     
 //    if(show_threshold<1.0){//} && texCoord.y>show_threshold){
@@ -119,10 +119,10 @@ void main(){
 //        gl_FragColor=texture2D(Sampler,textureCoordinate);
 //        return;
 //    }
-    if(mod(floor(texCoord.x*window_width),4.0)!=mod(floor(texCoord.y*window_height),4.0)){
-        gl_FragColor=vec4(0,0,0,1.0);
-        return;
-    }
+    if(mod(floor(texCoord.x*window_width/2.0),4.0)!=mod(floor(texCoord.y*window_height/2.0),4.0)){
+        dest_color=vec4(0,0,0,1.0);
+        
+    }else{
     
     
     leftTextureCoordinate = textureCoordinate + vec2(-dir.x, 0.0);
@@ -162,12 +162,19 @@ void main(){
     //gl_FragColor = vec4(gradientMagnitude, normalizedDirection.x, normalizedDirection.y, 1.0);
     if(gradientMagnitude>sobel_threshold){
 //          gl_FragColor=vec4(0,0,0,1.0);
-        gl_FragColor=mix(texture2D(Sampler,textureCoordinate),vec4(vec3(gradientMagnitude),1.0),show_threshold/2.0);
+        dest_color=mix(texture2D(Sampler,textureCoordinate),vec4(vec3(gradientMagnitude),1.0),show_threshold/2.0);
+        
     }else{
-      gl_FragColor=vec4(0,0,0,1.0);
+      dest_color=vec4(0,0,0,1.0);
 //        gl_FragColor=vec4(vec3(1.0-gradientMagnitude),1.0);
     }
+    }
     
+    if(show_threshold<1.0){
+        gl_FragColor=mix(texture2D(Sampler,textureCoordinate),dest_color,show_threshold);
+    }else{
+        gl_FragColor=dest_color;
+    }
     
     
 }

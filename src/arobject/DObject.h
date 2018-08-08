@@ -13,6 +13,7 @@
 
 class DObject{
 public:
+    static ofColor mainColor[5];
     static float rad;
     ofVec3f _loc;
     int _last_time;
@@ -21,6 +22,7 @@ public:
     bool _shader_fill;
     int _index_break;
     
+    ofColor _tint;
     
     DObject(ofVec3f pos):DObject(pos,-1){
         _last_time=0;
@@ -32,6 +34,12 @@ public:
 //        ofLog()<<"last_time= "<<last_;
         _shader_fill=false;
         
+        _tint=genColor();
+        
+    }
+    ofColor genColor(){
+        if(ofRandom(2)<1) return mainColor[0];
+        return mainColor[(int)floor(ofRandom(4)+1)];
     }
     virtual void draw(){}
     virtual void update(int dt){

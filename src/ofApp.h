@@ -24,9 +24,9 @@
 #define MRAIN 12
 #define MAX_MFEATURE 40
 #define MAX_MFLY_OBJ 40
-#define MAX_MDETECT 200
+#define MAX_MDETECT 100
 #define MTOUCH_SMOOTH 6
-#define BPM 60
+#define BPM 40
 
 
 class ofApp : public ofxiOSApp {
@@ -58,8 +58,9 @@ class ofApp : public ofxiOSApp {
     
         int _last_millis;
         int _dmillis;
+        int _play_millis;
     
-        int _ww,_wh;
+        int _ww,_wh,_projecth;
         ofTrueTypeFont _font;
     
     

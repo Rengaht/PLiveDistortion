@@ -18,7 +18,6 @@ class DPiece:public DObject{
     
     float _start_pos;
     float _vel;
-    ofColor _tint;
     
 public:
     DPiece(ofVec3f pos):DPiece(pos,-1){}
@@ -26,14 +25,12 @@ public:
         _texture_pos=ofVec2f(ofRandom(1),ofRandom(1));
 //        _texture_pos=ofVec2f(.5,.5);
         _phi=ofRandom(360);
-        _wid=rad*ofRandom(.5,.8);
+        _wid=rad*ofRandom(.8,1.3);
         
         _start_pos=_wid*ofRandom(20,30);
         _vel=-_start_pos/ofRandom(100,200);
         
-        _shader_fill=false;
-        
-        _tint=ofColor(ofRandom(180,255),ofRandom(180,255),ofRandom(180,255));
+        _shader_fill=true;
         
         generate();
     }
@@ -44,25 +41,32 @@ public:
         
         _mesh.addVertex(ofPoint(0,0,0));
         _mesh.addTexCoord(_texture_pos);
+        _mesh.addColor(genColor());
         
 //        float start_=ofRandom(30);
         float ang_=0;//start_;
-        float trad_=1/20.0;
+        float trad_=1/ofRandom(10,30);
         ofVec3f f_;
+        ofColor c_;
         while(ang_<=360){
             ofVec3f p(1,0,0);
             p.rotate(ang_,ofVec3f(0,1,0));
             p*=ofNoise(ang_/360);
             
-            if(ang_==0) f_=p;
+            if(ang_==0){
+                f_=p;
+                c_=genColor();
+            }
             
             _mesh.addVertex(p*_wid);
             _mesh.addTexCoord(ofVec2f(_texture_pos.x+p.x*trad_,_texture_pos.y+p.z*trad_));
+            _mesh.addColor(ang_==0?c_:genColor());
             
             ang_+=ofRandom(5,90);
         }
         _mesh.addVertex(f_*_wid);
         _mesh.addTexCoord(ofVec2f(_texture_pos.x+f_.x*trad_,_texture_pos.y+f_.z*trad_));
+        _mesh.addColor(c_);
         
         //ofLog()<<"create "<<_mesh.getNumVertices()/3<<" triangles";
         
@@ -70,7 +74,7 @@ public:
     void draw(){
         
         ofPushStyle();
-        ofSetColor(_tint);
+//        ofSetColor(_tint);
         
         ofDisableArbTex();
         

@@ -2,6 +2,7 @@
 
 
 
+ofColor DObject::mainColor[5]={ofColor(186,0,77),ofColor(123,11,83),ofColor(11,0,140),ofColor(74,0,60),ofColor(3,0,82)};
 
 float DFlyObject::maxForce=.2;
 float DFlyObject::maxSpeed=5;
@@ -9,7 +10,7 @@ float DFlyObject::rad=.5;
 float DFlyObject::boundary=0;
 ofVec3f DFlyObject::cent=ofVec3f(0);
 
-float DObject::rad=.1;
+float DObject::rad=.2;
 
 float DFlow::maxForce=3;
 float DFlow::maxSpeed=20;
