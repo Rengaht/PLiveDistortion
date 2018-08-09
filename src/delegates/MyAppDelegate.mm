@@ -50,8 +50,8 @@
     [super dealloc];
 }
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window{
-    NSUInteger orientations = UIInterfaceOrientationMaskPortrait;
-//    NSUInteger orientations = UIInterfaceOrientationMaskLandscapeLeft;
+//    NSUInteger orientations = UIInterfaceOrientationMaskPortrait;
+    NSUInteger orientations = UIInterfaceOrientationMaskLandscapeLeft;
 
     if(self.window.rootViewController){
         UIViewController *presentedViewController = [self topViewControllerWithRootViewController:self.window.rootViewController];

@@ -77,8 +77,13 @@ void DFlyObject::flock(list<shared_ptr<DFlyObject>>& others){
     //center
     ofVec3f cent_desired=cent-loc;
     ofVec3f cent_steer=cent_desired-vel;
-    cent_steer.limit(maxForce*2);
-    applyForce(cent_steer);
+    if(cent_desired.length()>maxSpeed*50){
+//        cent_steer.limit(cent_desired.length());
+        loc=cent+ofVec3f(ofRandom(-1,1),ofRandom(-1,1),ofRandom(-1,1))*maxSpeed;
+    }else{
+        cent_steer.limit(maxForce*2);
+        applyForce(cent_steer);
+    }
     
 }
 

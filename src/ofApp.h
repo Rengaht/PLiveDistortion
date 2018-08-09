@@ -140,6 +140,18 @@ class ofApp : public ofxiOSApp {
         ofxOscReceiver _osc_receiver;
         void checkMessage();
     
+    
+        // ====== sound ======//
+        void audioIn(float * input, int bufferSize, int nChannels);
+    
+        int    initialBufferSize;
+        int    sampleRate;
+        int    drawCounter;
+        int bufferCounter;
+//        float * buffer;
+    
+        ofImage _img_filter;
+    
 };
 
 

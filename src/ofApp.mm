@@ -17,7 +17,7 @@ ofApp :: ~ofApp () {
 void ofApp::setup(){
     
     ofBackground(0);
-//    ofSetOrientation(OF_ORIENTATION_90_LEFT);
+    //ofSetOrientation(OF_ORIENTATION_90_LEFT);
     
     _stage=-1;
     
@@ -25,7 +25,7 @@ void ofApp::setup(){
     cout<<"listening for osc messages on port "<<OSC_PORT<<"\n";
     _osc_receiver.setup(OSC_PORT);
     
-    int fontSize = 16;
+    int fontSize = 10;
     if (ofxiOSGetOFWindow()->isRetinaSupportedOnDevice())
         fontSize *= 2;
     _font.load("fonts/mono0755.ttf", fontSize);
@@ -36,16 +36,32 @@ void ofApp::setup(){
     processor->setup(true);
     
     
-   
+    /* setup audioin */
+    initialBufferSize = 512;
+    sampleRate = 44100;
+    drawCounter = 0;
+    bufferCounter = 0;
     
-    if(ofGetWindowWidth()>ofGetWindowHeight()){
-        _ww=ofGetHeight();
-        _wh=ofGetWidth();
-    }else{
-        _ww=ofGetWidth();
-        _wh=ofGetHeight();
-    }
-    _projecth=_wh/1024.0*300.0;
+//    buffer = new float[initialBufferSize];
+//    memset(buffer, 0, initialBufferSize * sizeof(float));
+    
+    // 0 output channels,
+    // 1 input channels
+    // 44100 samples per second
+    // 512 samples per buffer
+    // 1 buffer
+    ofSoundStreamSetup(0, 1, this, sampleRate, initialBufferSize, 1);
+    
+    _img_filter.load("filter.png");
+    
+//    if(ofGetWindowWidth()<ofGetWindowHeight()){
+//        _ww=ofGetHeight();
+//        _wh=ofGetWidth();
+//    }else{
+        _ww=ofGetScreenWidth();
+        _wh=ofGetScreenHeight();
+//    }
+    _projecth=_ww/1024.0*300.0;
     
     
     _fbo_tmp1.allocate(_ww,_wh,GL_RGB);
@@ -149,7 +165,7 @@ void ofApp::update(){
                     
                     _detect_feature.pop_front();
                 }
-                if(ofRandom(5)<1) updateFeaturePoint();
+                 updateFeaturePoint();
             }
             break;
         case 3:
@@ -178,6 +194,7 @@ void ofApp::update(){
             _shader_threshold=1-_timer_filterOut.val()+ofRandom(-.05,.05);
             _sobel_threshold=ofMap( _timer_filterOut.val(),0,1,.2,2.0);
             _timer_filterOut.update(_dmillis);
+            //updateFlyCenter();
             for(auto& p:_fly_object){
                 p->updateFlock(_fly_object);
             //    p->updateToDest();
@@ -282,8 +299,8 @@ ofVec3f ofApp::arScreenToWorld(ofVec3f screen_pos){
 }
 void ofApp::updateFlyCenter(){
     
-    float flyz_=-5+sin(_timer_bpm.val()*TWO_PI)*2;
-    ofVec3f center_=arScreenToWorld(ofVec3f(_ww/2,_wh/2,flyz_));
+    float flyz_=-2+sin(_timer_bpm.val()*TWO_PI)*2;
+    ofVec3f center_=arScreenToWorld(ofVec3f(_ww/2+ofRandom(-50,50),_wh/2+ofRandom(-50,50),flyz_));
     ofVec3f camera_pos=processor->getCameraPosition();
     
     
@@ -291,14 +308,14 @@ void ofApp::updateFlyCenter(){
     dir_.rotate(90*sin(ofGetFrameNum()/50.0), ofVec3f(0,0,1));
     
     ofVec3f vel_=(camera_pos+dir_)-DFlyObject::cent;
-    vel_.normalize();
-    vel_*=DFlyObject::maxForce/2.0;
+//    vel_.normalize();
+//    vel_*=DFlyObject::maxForce*5;
     
-    DFlyObject::cent+=vel_;
+    DFlyObject::cent=center_;
     
     if(_stage==4 && _timer_bpm.val()==1){
-        DFlyObject::maxForce*=1.05;
-        DFlyObject::maxSpeed*=1.05;
+        DFlyObject::maxForce*=1.08;
+        DFlyObject::maxSpeed*=1.08;
     }
 }
 void ofApp::setupFlyToDest(){
@@ -375,23 +392,31 @@ void ofApp::draw(){
     _shader_mapscreen.setUniform1f("window_height", ofGetHeight()*2.0);
     _shader_mapscreen.setUniform1f("frame_count", ((float)ofGetFrameNum()/150.0));
 
+    _shader_mapscreen.setUniform1i("draw_pattern",1);
     for(auto& p:_feature_object)
         if(p->_shader_fill) p->draw();
     for(auto& p:_fly_object)
         if(p->_shader_fill) p->draw();
+    
+    _shader_mapscreen.setUniform1i("draw_pattern",0);
+    for(auto& p:_feature_object)
+        if(!p->_shader_fill) p->draw();
+    for(auto& p:_fly_object)
+        if(!p->_shader_fill) p->draw();
+    if(_record_object) _record_object->draw();
     
     _shader_mapscreen.end();
 
-    _camera_view.bind();
-    for(auto& p:_feature_object)
-        if(!p->_shader_fill) p->draw();
-    for(auto& p:_fly_object)
-        if(!p->_shader_fill) p->draw();
-    
-    if(_record_object) _record_object->draw();
-    
-    
-    _camera_view.unbind();
+//    _camera_view.bind();
+//    for(auto& p:_feature_object)
+//        if(!p->_shader_fill) p->draw();
+//    for(auto& p:_fly_object)
+//        if(!p->_shader_fill) p->draw();
+//
+//    if(_record_object) _record_object->draw();
+//
+//
+//    _camera_view.unbind();
 
 
     
@@ -406,34 +431,47 @@ void ofApp::draw(){
     ofDisableDepthTest();
     
     ofPushStyle();
-    if(_stage==3) ofSetColor(0,255,0);
-    else ofSetColor(255,0,0);
+    
+    ofSetColor(0);
+    ofFill();
+    float fh_=_ww/20.0;
+    ofDrawRectangle(0,_wh/2+_projecth/2,_ww,_wh/2-_projecth/2);
+    _img_filter.draw(0,_wh/2+_projecth/2-fh_,_ww,fh_);
+    
+    ofDrawRectangle(0,0,_ww,_wh/2-_projecth/2);
+    ofPushMatrix();
+    ofTranslate(_ww,_wh/2-_projecth/2);
+    ofRotateZ(180);
+        _img_filter.draw(0,-fh_,_ww,fh_);
+    ofPopMatrix();
+    
+    if(_stage==3) ofSetColor(0,120,0);
+    else ofSetColor(120);
     
     ofPushMatrix();
-    ofTranslate(_ww/2,_wh/2);
-    ofRotateZ(90);
-    ofTranslate(-_wh/2,-_ww/2);
-    ofDrawAxis(20);
+//    ofTranslate(_ww/2,_wh/2);
+//    ofRotateZ(90);
+//    ofTranslate(-_wh/2,-_ww/2);
+//    ofDrawAxis(20);
     
     float p=_font.getSize()*1.5;
     float x=p;
     float y=p;
-    _font.drawString("stage= " + ofToString(_stage),_wh/2, y);
+    _font.drawString(ofToString(_stage),_ww/2, y);
     //_font.drawString("mfeature= " + ofToString(_feature_mesh.getNumVertices()),x, y+=p);
     //_font.drawString("#f= " + ofToString(_detect_feature.size()),x, y+p);
-    _font.drawString(ofToString(_amp_vibe),x, y);
+    _font.drawString(ofToString(abs(_amp_vibe)),_ww/4, y);
+//    ofDrawCircle(_ww/4,y,p*abs(_amp_vibe));
+    _font.drawString(ofToString(floor(_play_millis/60000))+":"+ofToString(floor((_play_millis/1000)%60)),x,y);
     
-    _font.drawString(ofToString(floor(_play_millis/60000))+":"+ofToString(floor((_play_millis/1000)%60)),x,y+p);
+    _font.drawString(ofToString( ofGetFrameRate() ),x+p*3,_wh-p);
+    if(processor->camera->getTrackingState()!=2) _font.drawString("!bad tracking!",_ww/2, _wh-p);
     
-    _font.drawString(ofToString( ofGetFrameRate() ),x+p*3,_ww-p);
-    if(processor->camera->getTrackingState()!=2) _font.drawString("!bad tracking!",_wh/2, _ww-p);
-    
+    ofNoFill();
         float b_=_timer_bpm.val();
-        ofDrawCircle(x,_ww-p,b_*p);
+        ofDrawCircle(x,_wh-p,b_*p);
     
-        ofDrawLine(0,_ww/2-_projecth/2,_wh,_ww/2-_projecth/2);
-        ofDrawLine(0,_ww/2+_projecth/2,_wh,_ww/2+_projecth/2);
-    
+   
     ofPopStyle();
     
     ofPopMatrix();
@@ -497,8 +535,8 @@ void ofApp::deviceOrientationChanged(int newOrientation){
     //ofxiOSGetOFWindow()->setOrientation(OF_ORIENTATION_DEFAULT);
 //    _orientation=newOrientation;
     
-    _ww=ofGetWidth();
-    _wh=ofGetHeight();
+    _ww=ofGetScreenWidth();
+    _wh=ofGetScreenHeight();
 }
 
 
@@ -589,9 +627,10 @@ void ofApp::reset(){
 
 // ======================== BUTTON ======================== //
 void ofApp::resetButton(){
-  
-    
-    
+    for(auto& fly:_fly_object){
+        fly->loc=DFlyObject::cent;
+        fly->vel*=0.1;
+    }
 }
 
 
@@ -602,8 +641,10 @@ void ofApp::nextStage(){
 }
 void ofApp::prevStage(){
     
-    if(_stage==1) reset();
-    else setStage(_stage-1);
+//    if(_stage==1) reset();
+//    else setStage(_stage-1);
+
+    setStage(0);
     
 }
 void ofApp::setStage(int set_){
@@ -709,3 +750,22 @@ void ofApp::checkMessage(){
     }
     
 }
+
+
+
+void ofApp::audioIn(float * input, int bufferSize, int nChannels){
+    if(initialBufferSize < bufferSize){
+        ofLog(OF_LOG_ERROR, "your buffer size was set to %i - but the stream needs a buffer size of %i", initialBufferSize, bufferSize);
+    }
+    float amp_=0;
+    int minBufferSize = MIN(initialBufferSize, bufferSize);
+    for(int i=0; i<minBufferSize; i++) {
+//        buffer[i] = input[i];
+        amp_+=input[i];
+    }
+    amp_/=minBufferSize;
+    _amp_vibe=ofClamp(abs(amp_)*40,0,2);
+    
+//    bufferCounter++;
+}
+

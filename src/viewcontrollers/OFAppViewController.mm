@@ -35,7 +35,7 @@
 }
 
 - (UIInterfaceOrientationMask) supportedInterfaceOrientations {
-    return UIInterfaceOrientationMaskPortrait;
+    return UIInterfaceOrientationMaskLandscapeLeft;
 }
 
 - (BOOL)shouldAutorotate {
